@@ -1,0 +1,12 @@
+{
+    "type":"response.output_item.added",
+    "sequence_number":4,
+    "output_index":1,
+    "item":{
+        "id":"msg_03525d28827f75eb01690b0e00a5a88197aa21dfd33cdb299a",
+        "type":"message",
+        "status":"in_progress",
+        "content":[],
+        "role":"assistant"
+    }
+}
