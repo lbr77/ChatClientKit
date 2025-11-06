@@ -265,11 +265,32 @@ public enum ToolChoiceInput: Codable {
 
 public struct ToolInput: Codable {
     public let type: String
-    public let definition: [String: JSONValue]
+    /// Responses API shape
+    public let function: [String: JSONValue]?
 
-    public init(type: String, definition: [String: Any]) {
+    /// Compatibility fields for providers that expect Chat Completions shape
+    /// { "type":"function", "name":..., "description":..., "parameters":..., "strict":... }
+    public let name: String?
+    public let description: String?
+    public let parameters: [String: JSONValue]?
+    public let strict: Bool?
+
+    public init(type: String, function: [String: JSONValue]) {
         self.type = type
-        self.definition = definition.mapValues { JSONValue($0) }
+        self.function = function
+        self.name = function["name"]?.value as? String
+        self.description = function["description"]?.value as? String
+        if case let .object(obj) = function["parameters"] { self.parameters = obj } else { self.parameters = nil }
+        self.strict = function["strict"]?.value as? Bool
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case function
+        case name
+        case description
+        case parameters
+        case strict
     }
 }
 
@@ -414,7 +435,7 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
         }
     }
 
-    override public var apiPath: String { "/v1/responses" }
+    override public var apiPath: String { "/responses" }
     override public var formatName: String { "openai_responses" }
     override public var supportsStreaming: Bool { true }
 
@@ -630,6 +651,36 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
             }
         }
 
+        // Tool-call name/args deltas (if backend streams them)
+        if ["response.function_call.name.delta", "function_call.name.delta"].contains(type) {
+            if let nameDelta = eventObj["name_delta"] as? String, !nameDelta.isEmpty {
+                let idx = (eventObj["output_index"] as? Int) ?? 0
+                let tool = ChatCompletionChunk.Choice.Delta.ToolCall(
+                    index: nil,
+                    id: nil,
+                    type: "function",
+                    function: .init(name: nameDelta, arguments: nil)
+                )
+                return ChatCompletionChunk(choices: [
+                    .init(delta: .init(toolCalls: [tool]), index: idx)
+                ])
+            }
+        }
+        if ["response.function_call.arguments.delta", "function_call.arguments.delta"].contains(type) {
+            if let argsDelta = eventObj["arguments_delta"] as? String, !argsDelta.isEmpty {
+                let idx = (eventObj["output_index"] as? Int) ?? 0
+                let tool = ChatCompletionChunk.Choice.Delta.ToolCall(
+                    index: nil,
+                    id: nil,
+                    type: "function",
+                    function: .init(name: nil, arguments: argsDelta)
+                )
+                return ChatCompletionChunk(choices: [
+                    .init(delta: .init(toolCalls: [tool]), index: idx)
+                ])
+            }
+        }
+
         // content_part.added carries inline text; ignore *.done
         if ["response.content_part.added", "content_part.added"].contains(type) {
             if let part = eventObj["part"] as? [String: Any],
@@ -644,8 +695,35 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
             }
         }
 
-        // Done markers should not emit any content
-        if ["response.output_item.done", "output_item.done", "response.output_text.done", "output_text.done"].contains(type) {
+        // Handle tool call surfaced at done of output_item
+        if ["response.output_item.done", "output_item.done"].contains(type) {
+            if let item = eventObj["item"] as? [String: Any],
+               let itemType = item["type"] as? String,
+               itemType == "function_call"
+            {
+                let callId = item["call_id"] as? String
+                let name = item["name"] as? String
+                let arguments = item["arguments"] as? String
+                let tool = ChatCompletionChunk.Choice.Delta.ToolCall(
+                    index: nil,
+                    id: callId,
+                    type: "function",
+                    function: .init(name: name, arguments: arguments)
+                )
+                let idx = (eventObj["output_index"] as? Int) ?? 0
+                let choice = ChatCompletionChunk.Choice(
+                    delta: .init(toolCalls: [tool]),
+                    finishReason: "tool_calls",
+                    index: idx
+                )
+                return ChatCompletionChunk(choices: [choice])
+            }
+            // No function call; ignore
+            return nil
+        }
+
+        // Done markers on output_text convey no additional content
+        if ["response.output_text.done", "output_text.done"].contains(type) {
             return nil
         }
 
@@ -750,6 +828,41 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
                 return nil
             }
 
+        // Map tools (Chat Completions shape) to Responses API tools
+        let responsesTools: [ToolInput]? = {
+            guard let tools = chatRequest.tools, !tools.isEmpty else { return nil }
+            return tools.compactMap { tool in
+                switch tool {
+                case let .function(name, description, parameters, strict):
+                    var fn: [String: JSONValue] = [
+                        "name": .string(name)
+                    ]
+                    if let description { fn["description"] = .string(description) }
+                    if let parameters { fn["parameters"] = .object(parameters) }
+                    if let strict { fn["strict"] = .bool(strict) }
+                    return ToolInput(type: "function", function: fn)
+                }
+            }
+        }()
+
+        // Map ChatRequestBody.toolChoice to Responses API when possible.
+        let responsesToolChoice: ToolChoiceInput? = {
+            guard let tools = responsesTools, !tools.isEmpty else { return nil }
+            switch chatRequest.toolChoice {
+            case .none?:
+                return .string("none")
+            case .auto?, nil:
+                return .string("auto")
+            case .required?:
+                return .string("required")
+            case let .specific(functionName)?:
+                return .object([
+                    "type": .string("function"),
+                    "function": .object(["name": .string(functionName)])
+                ])
+            }
+        }()
+
         return ResponsesRequestBody(
             background: nil,
             conversation: nil,
@@ -760,7 +873,7 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
             maxToolCalls: nil,
             metadata: nil,
             model: model,
-            parallelToolCalls: nil,
+            parallelToolCalls: chatRequest.parallelToolCalls ?? ((responsesTools?.isEmpty == false) ? true : nil),
             previousResponseId: nil,
             prompt: nil,
             promptCacheKey: nil,
@@ -772,8 +885,8 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
             streamOptions: chatRequest.streamOptions,
             temperature: chatRequest.temperature,
             text: nil,
-            toolChoice: nil,
-            tools: nil,
+            toolChoice: responsesToolChoice,
+            tools: responsesTools,
             topLogprobs: nil,
             topP: chatRequest.topP,
             truncation: nil,
@@ -782,6 +895,7 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
     }
 
     private func convertResponsesToChatResponse(_ responsesResponse: ResponsesResponseBody) -> ChatResponseBody {
+        print("ResponsesResponseBody: \(responsesResponse)")
         let choices = responsesResponse.outputs.enumerated().map { _, output in
             let message = ChoiceMessage(
                 content: extractTextFromOutput(output),
@@ -812,28 +926,33 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
 
     private func convertResponsesToChatChunk(_ responsesChunk: ResponsesStreamingChunk) -> ChatCompletionChunk {
         let choices: [ChatCompletionChunk.Choice] = responsesChunk.outputs?.enumerated().compactMap { enumeratedIndex, output in
-            // Extract content from various output shapes, including delta events
-            guard let contentText = extractTextFromOutput(output), !contentText.isEmpty else {
-                return nil
+            // 1) Extract text deltas/content
+            if let contentText = extractTextFromOutput(output), !contentText.isEmpty {
+                let role: String? = {
+                    if let oi = output.outputIndex {
+                        return oi == 0 ? "assistant" : nil
+                    } else {
+                        return enumeratedIndex == 0 ? "assistant" : nil
+                    }
+                }()
+
+                let delta = ChatCompletionChunk.Choice.Delta(
+                    content: contentText,
+                    role: role
+                )
+                let index = output.outputIndex ?? enumeratedIndex
+                return ChatCompletionChunk.Choice(
+                    delta: delta,
+                    index: index
+                )
             }
 
-            let role: String? = {
-                if let oi = output.outputIndex {
-                    return oi == 0 ? "assistant" : nil
-                } else {
-                    return enumeratedIndex == 0 ? "assistant" : nil
-                }
-            }()
+            // 2) Extract tool calls
+            if let toolChoice = extractToolCallFromOutput(output, enumeratedIndex: enumeratedIndex) {
+                return toolChoice
+            }
 
-            let delta = ChatCompletionChunk.Choice.Delta(
-                content: contentText,
-                role: role
-            )
-            let index = output.outputIndex ?? enumeratedIndex
-            return ChatCompletionChunk.Choice(
-                delta: delta,
-                index: index
-            )
+            return nil
         } ?? []
 
         let usage = responsesChunk.usage.map { responsesUsage in
@@ -901,5 +1020,31 @@ public final class OpenAIResponsesFormat: BaseChatFormat {
         if doneTypes.contains(output.type) { return nil }
 
         return nil
+    }
+
+    private func extractToolCallFromOutput(_ output: ResponseOutput, enumeratedIndex: Int) -> ChatCompletionChunk.Choice? {
+        let doneTypes: Set<String> = [
+            "response.output_item.done",
+            "output_item.done"
+        ]
+        guard doneTypes.contains(output.type),
+              let item = output.item,
+              let itemType = item["type"]?.value as? String,
+              itemType == "function_call"
+        else { return nil }
+
+        let callId = item["call_id"]?.value as? String
+        let name = item["name"]?.value as? String
+        let arguments = item["arguments"]?.value as? String
+
+        let tool = ChatCompletionChunk.Choice.Delta.ToolCall(
+            index: nil,
+            id: callId,
+            type: "function",
+            function: .init(name: name, arguments: arguments)
+        )
+        let delta = ChatCompletionChunk.Choice.Delta(toolCalls: [tool])
+        let index = output.outputIndex ?? enumeratedIndex
+        return ChatCompletionChunk.Choice(delta: delta, finishReason: "tool_calls", index: index)
     }
 }
