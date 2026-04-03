@@ -14,7 +14,7 @@ struct RequestSanitizerTests {
     func `Inserts tool placeholder and trailing user text after tool call (anthropic/claude-opus-4.5)`() {
         let toolCall = ChatRequestBody.Message.ToolCall(
             id: "tool-1",
-            function: .init(name: "search_web", arguments: #"{"q":"hello"}"#),
+            function: .init(name: "search_web", arguments: #"{"q":"hello"}"#)
         )
 
         let body = ChatRequestBody(
@@ -23,7 +23,7 @@ struct RequestSanitizerTests {
                 .user(content: .text("please search")),
                 .assistant(content: nil, toolCalls: [toolCall]),
                 // no tool response yet; sanitizer should add one and a trailing user text
-            ],
+            ]
         )
 
         let sanitized = RequestSanitizer().sanitize(body)

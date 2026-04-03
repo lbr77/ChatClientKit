@@ -41,7 +41,7 @@ extension ResponsesRequestBody {
                 name: name,
                 description: description,
                 parameters: parameters,
-                strict: strict,
+                strict: strict
             ):
                 type = "function"
                 self.name = name
@@ -144,7 +144,7 @@ struct ResponsesRequestTransformer {
     func makeRequestBody(
         from chatBody: ChatRequestBody,
         model: String,
-        stream: Bool,
+        stream: Bool
     ) -> ResponsesRequestBody {
         var instructionsChunks: [String] = []
         var inputItems: [ResponsesRequestBody.InputItem] = []
@@ -170,7 +170,7 @@ struct ResponsesRequestTransformer {
                         inputItems.append(.functionCall(
                             callID: call.id,
                             name: call.function.name,
-                            arguments: call.function.arguments,
+                            arguments: call.function.arguments
                         ))
                     }
                 }
@@ -193,14 +193,14 @@ struct ResponsesRequestTransformer {
             stream: stream,
             temperature: chatBody.temperature,
             maxOutputTokens: chatBody.maxCompletionTokens,
-            tools: chatBody.tools?.map(ResponsesRequestBody.Tool.init),
+            tools: chatBody.tools?.map(ResponsesRequestBody.Tool.init)
         )
     }
 }
 
 extension ResponsesRequestTransformer {
     func flattenTextContent(
-        _ content: ChatRequestBody.Message.MessageContent<String, [String]>,
+        _ content: ChatRequestBody.Message.MessageContent<String, [String]>
     ) -> String? {
         switch content {
         case let .text(text):
@@ -211,7 +211,7 @@ extension ResponsesRequestTransformer {
     }
 
     func mapAssistantContent(
-        _ content: ChatRequestBody.Message.MessageContent<String, [String]>?,
+        _ content: ChatRequestBody.Message.MessageContent<String, [String]>?
     ) -> [ResponsesRequestBody.ContentPart]? {
         guard let content else { return nil }
         switch content {
@@ -226,7 +226,7 @@ extension ResponsesRequestTransformer {
     }
 
     func mapUserContent(
-        _ content: ChatRequestBody.Message.MessageContent<String, [ChatRequestBody.Message.ContentPart]>,
+        _ content: ChatRequestBody.Message.MessageContent<String, [ChatRequestBody.Message.ContentPart]>
     ) -> [ResponsesRequestBody.ContentPart] {
         switch content {
         case let .text(text):

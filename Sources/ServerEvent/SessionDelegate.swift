@@ -24,7 +24,7 @@ class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     func urlSession(
         _: URLSession,
         task _: URLSessionTask,
-        didCompleteWithError error: Error?,
+        didCompleteWithError error: Error?
     ) {
         internalStream.continuation.yield(.didCompleteWithError(error))
     }
@@ -33,7 +33,7 @@ class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
         _: URLSession,
         dataTask _: URLSessionDataTask,
         didReceive response: URLResponse,
-        completionHandler: @Sendable @escaping (URLSession.ResponseDisposition) -> Void,
+        completionHandler: @Sendable @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         internalStream.continuation.yield(.didReceiveResponse(response, completionHandler))
     }
@@ -41,7 +41,7 @@ class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     func urlSession(
         _: URLSession,
         dataTask _: URLSessionDataTask,
-        didReceive data: Data,
+        didReceive data: Data
     ) {
         internalStream.continuation.yield(.didReceiveData(data))
     }

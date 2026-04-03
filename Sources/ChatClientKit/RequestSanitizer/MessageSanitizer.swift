@@ -25,7 +25,7 @@ enum MessageSanitizer {
                 } else {
                     nil
                 }
-            },
+            }
         )
 
         var sanitized: [ChatRequestBody.Message] = []
@@ -95,7 +95,7 @@ enum MessageSanitizer {
     }
 
     static func flattenSystemContent(
-        _ content: ChatRequestBody.Message.MessageContent<String, [String]>,
+        _ content: ChatRequestBody.Message.MessageContent<String, [String]>
     ) -> String {
         switch content {
         case let .text(text):

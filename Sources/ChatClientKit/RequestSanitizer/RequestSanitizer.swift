@@ -17,7 +17,7 @@ struct RequestSanitizer: RequestSanitizing {
             maxCompletionTokens: body.maxCompletionTokens,
             stream: body.stream,
             temperature: body.temperature,
-            tools: sanitizedTools,
+            tools: sanitizedTools
         )
         sanitizedBody.model = body.model
         return sanitizedBody

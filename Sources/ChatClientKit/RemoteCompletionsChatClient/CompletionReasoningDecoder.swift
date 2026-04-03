@@ -17,7 +17,7 @@ public struct CompletionReasoningDecoder: Sendable {
     }
 
     public func extractingReasoningContent(
-        from delta: ChatCompletionChunk.Choice.Delta,
+        from delta: ChatCompletionChunk.Choice.Delta
     ) -> ChatCompletionChunk.Choice.Delta {
         guard delta.reasoning?.isEmpty != false,
               delta.reasoningContent?.isEmpty != false,
@@ -34,7 +34,7 @@ public struct CompletionReasoningDecoder: Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let remainingContent = String(
             (leading + trailing)
-                .trimmingCharacters(in: .whitespacesAndNewlines),
+                .trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
         return ChatCompletionChunk.Choice.Delta(
@@ -43,7 +43,7 @@ public struct CompletionReasoningDecoder: Sendable {
             reasoningContent: reasoningContent,
             role: delta.role,
             toolCalls: delta.toolCalls,
-            images: delta.images,
+            images: delta.images
         )
     }
 }
@@ -59,7 +59,7 @@ public struct ReasoningStreamReducer: Sendable {
 
     public mutating func process(
         contentSegments: [String],
-        into chunk: inout ChatCompletionChunk,
+        into chunk: inout ChatCompletionChunk
     ) {
         guard !contentSegments.isEmpty else { return }
         reduceReasoningContent(
@@ -68,7 +68,7 @@ public struct ReasoningStreamReducer: Sendable {
             reasoningContent: [],
             isInsideReasoning: &isInsideReasoningContent,
             buffer: &contentBuffer,
-            response: &chunk,
+            response: &chunk
         )
     }
 
@@ -79,7 +79,7 @@ public struct ReasoningStreamReducer: Sendable {
 
         if isInsideReasoningContent {
             emittedChunks.append(.init(
-                choices: [.init(delta: .init(reasoningContent: contentBuffer))],
+                choices: [.init(delta: .init(reasoningContent: contentBuffer))]
             ))
             contentBuffer = ""
             isInsideReasoningContent = false
@@ -95,7 +95,7 @@ public struct ReasoningStreamReducer: Sendable {
                 reasoningContent: [],
                 isInsideReasoning: &isInsideReasoningContent,
                 buffer: &contentBuffer,
-                response: &response,
+                response: &response
             )
 
             if !response.choices.isEmpty {
@@ -110,12 +110,12 @@ public struct ReasoningStreamReducer: Sendable {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 if !sanitized.isEmpty {
                     emittedChunks.append(.init(
-                        choices: [.init(delta: .init(reasoningContent: sanitized))],
+                        choices: [.init(delta: .init(reasoningContent: sanitized))]
                     ))
                 }
             } else {
                 emittedChunks.append(.init(
-                    choices: [.init(delta: .init(content: pendingBuffer))],
+                    choices: [.init(delta: .init(content: pendingBuffer))]
                 ))
             }
             contentBuffer = ""
@@ -131,7 +131,7 @@ func reduceReasoningContent(
     reasoningContent: [String],
     isInsideReasoning: inout Bool,
     buffer: inout String,
-    response: inout ChatCompletionChunk,
+    response: inout ChatCompletionChunk
 ) {
     let previousBuffer = buffer
     var hasProcessedReasoningToken = isInsideReasoning
@@ -202,7 +202,7 @@ func reduceReasoningContent(
             }
         } else {
             response = .init(choices: [.init(delta: .init(
-                reasoningContent: bufferContent,
+                reasoningContent: bufferContent
             ))])
         }
     }
@@ -224,11 +224,11 @@ func reduceReasoningContent(
                 reasoningContent: firstChoice.delta.reasoningContent,
                 role: firstChoice.delta.role,
                 toolCalls: firstChoice.delta.toolCalls,
-                images: firstChoice.delta.images,
+                images: firstChoice.delta.images
             )
             updatedChoices[0] = .init(
                 delta: updatedDelta,
-                index: firstChoice.index,
+                index: firstChoice.index
             )
             response = .init(choices: updatedChoices)
         }

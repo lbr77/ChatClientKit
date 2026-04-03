@@ -4,7 +4,7 @@ struct RemoteCompletionsChatResponseDecoder {
     let decoder: JSONDecoding
 
     init(
-        decoder: JSONDecoding = JSONDecoderWrapper(),
+        decoder: JSONDecoding = JSONDecoderWrapper()
     ) {
         self.decoder = decoder
     }

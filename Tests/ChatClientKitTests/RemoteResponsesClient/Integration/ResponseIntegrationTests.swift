@@ -11,7 +11,7 @@ import Testing
 
 struct ResponseIntegrationTests {
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Responses request returns content`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()
@@ -31,7 +31,7 @@ struct ResponseIntegrationTests {
     }
 
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Responses streaming yields chunks`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()

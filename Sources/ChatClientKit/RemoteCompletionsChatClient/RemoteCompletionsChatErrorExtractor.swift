@@ -25,7 +25,7 @@ public struct RemoteCompletionsChatErrorExtractor: Sendable {
             return NSError(
                 domain: domain,
                 code: status,
-                userInfo: [NSLocalizedDescriptionKey: errorMessage],
+                userInfo: [NSLocalizedDescriptionKey: errorMessage]
             )
         }
 
@@ -37,7 +37,7 @@ public struct RemoteCompletionsChatErrorExtractor: Sendable {
                 return NSError(
                     domain: String(localized: "Server Error"),
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: message],
+                    userInfo: [NSLocalizedDescriptionKey: message]
                 )
             }
         }
@@ -52,7 +52,7 @@ public struct RemoteCompletionsChatErrorExtractor: Sendable {
                    options: [
                        .prettyPrinted,
                        .sortedKeys,
-                   ],
+                   ]
                ),
                let detail = String(data: metadataData, encoding: .utf8)
             {
@@ -66,7 +66,7 @@ public struct RemoteCompletionsChatErrorExtractor: Sendable {
                 code: code,
                 userInfo: [
                     NSLocalizedDescriptionKey: full,
-                ],
+                ]
             )
         }
 

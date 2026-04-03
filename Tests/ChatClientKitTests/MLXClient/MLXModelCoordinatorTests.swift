@@ -113,7 +113,7 @@ private struct StubTokenizer: Tokenizer {
     func applyChatTemplate(
         messages: [[String: any Sendable]],
         tools: [[String: any Sendable]]?,
-        additionalContext: [String: any Sendable]?,
+        additionalContext: [String: any Sendable]?
     ) throws -> [Int] {
         _ = messages
         _ = tools

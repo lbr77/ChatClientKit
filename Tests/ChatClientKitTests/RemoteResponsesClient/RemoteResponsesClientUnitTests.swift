@@ -21,7 +21,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -31,7 +31,7 @@ struct RemoteResponsesClientUnitTests {
             apiKey: TestHelpers.requireAPIKey(),
             additionalHeaders: ["X-Test": "value"],
             additionalBodyField: ["foo": "bar"],
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let body = ChatRequestBody(messages: [
@@ -41,7 +41,7 @@ struct RemoteResponsesClientUnitTests {
         ])
 
         let request = try client.makeURLRequest(
-            body: client.resolve(body: body, stream: false),
+            body: client.resolve(body: body, stream: false)
         )
         #expect(request.url?.absoluteString == "https://example.com/v1/responses")
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer \(TestHelpers.requireAPIKey())")
@@ -90,7 +90,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -98,7 +98,7 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let parameters: [String: AnyCodingValue] = [
@@ -117,13 +117,13 @@ struct RemoteResponsesClientUnitTests {
                     name: "search",
                     description: "Searches the index",
                     parameters: parameters,
-                    strict: true,
+                    strict: true
                 ),
-            ],
+            ]
         )
 
         let request = try client.makeURLRequest(
-            body: client.resolve(body: body, stream: false),
+            body: client.resolve(body: body, stream: false)
         )
         let bodyData = try #require(request.httpBody)
         let json = try #require(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
@@ -157,7 +157,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -165,12 +165,12 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let toolCall = ChatRequestBody.Message.ToolCall(
             id: "call-1",
-            function: .init(name: "do_calc", arguments: "{\"v\":1}"),
+            function: .init(name: "do_calc", arguments: "{\"v\":1}")
         )
         let body = ChatRequestBody(messages: [
             .assistant(content: nil, toolCalls: [toolCall]),
@@ -178,7 +178,7 @@ struct RemoteResponsesClientUnitTests {
         ])
 
         let request = try client.makeURLRequest(
-            body: client.resolve(body: body, stream: false),
+            body: client.resolve(body: body, stream: false)
         )
         let bodyData = try #require(request.httpBody)
         let json = try #require(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
@@ -321,7 +321,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -329,11 +329,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var received: [ChatResponseChunk] = []
@@ -371,7 +371,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -379,11 +379,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var chunks: [ChatResponseChunk] = []
@@ -412,7 +412,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -420,11 +420,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var texts: [String] = []
@@ -455,7 +455,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -463,11 +463,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var texts: [String] = []
@@ -497,7 +497,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -505,11 +505,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         for try await _ in stream {}
@@ -597,7 +597,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -605,11 +605,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var refusalText: String?
@@ -638,7 +638,7 @@ struct RemoteResponsesClientUnitTests {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteResponsesErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
 
         let client = RemoteResponsesChatClient(
@@ -646,11 +646,11 @@ struct RemoteResponsesClientUnitTests {
             baseURL: "https://example.com",
             path: "/v1/responses",
             apiKey: TestHelpers.requireAPIKey(),
-            dependencies: dependencies,
+            dependencies: dependencies
         )
 
         let stream = try await client.streamingChat(
-            body: ChatRequestBody(messages: [.user(content: .text("hi"))]),
+            body: ChatRequestBody(messages: [.user(content: .text("hi"))])
         )
 
         var reasoningContent: String?

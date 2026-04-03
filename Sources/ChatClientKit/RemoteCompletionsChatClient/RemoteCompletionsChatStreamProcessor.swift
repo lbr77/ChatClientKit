@@ -18,7 +18,7 @@ struct RemoteCompletionsChatStreamProcessor {
         eventSourceFactory: EventSourceProducing = DefaultEventSourceFactory(),
         chunkDecoder: JSONDecoding = JSONDecoderWrapper(),
         errorExtractor: RemoteCompletionsChatErrorExtractor = RemoteCompletionsChatErrorExtractor(),
-        reasoningParser: CompletionReasoningDecoder = .init(),
+        reasoningParser: CompletionReasoningDecoder = .init()
     ) {
         self.eventSourceFactory = eventSourceFactory
         self.chunkDecoder = chunkDecoder
@@ -28,7 +28,7 @@ struct RemoteCompletionsChatStreamProcessor {
 
     func stream(
         request: URLRequest,
-        collectError: @Sendable @escaping (Swift.Error) async -> Void,
+        collectError: @Sendable @escaping (Swift.Error) async -> Void
     ) -> AnyAsyncSequence<ChatResponseChunk> {
         let eventSourceFactory = eventSourceFactory
         let chunkDecoder = chunkDecoder

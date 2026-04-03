@@ -6,7 +6,7 @@ import Foundation
 public class MLXChatClient: ChatService, @unchecked Sendable {
     let modelConfiguration: ModelConfiguration
     let emptyImage: CIImage = MLXImageUtilities.placeholderImage(
-        size: .init(width: 64, height: 64),
+        size: .init(width: 64, height: 64)
     )
     let coordinator: MLXModelCoordinating
     let preferredKind: MLXModelKind
@@ -19,7 +19,7 @@ public class MLXChatClient: ChatService, @unchecked Sendable {
     public init(
         url: URL,
         preferredKind: MLXModelKind = .llm,
-        coordinator: MLXModelCoordinating = MLXModelCoordinator.shared,
+        coordinator: MLXModelCoordinating = MLXModelCoordinator.shared
     ) {
         modelConfiguration = .init(directory: url)
         self.preferredKind = preferredKind
@@ -27,7 +27,7 @@ public class MLXChatClient: ChatService, @unchecked Sendable {
     }
 
     public func streamingChat(
-        body: ChatRequestBody,
+        body: ChatRequestBody
     ) async throws -> AnyAsyncSequence<ChatResponseChunk> {
         let resolvedBody = resolve(body: body, stream: true)
         logger.info("starting streaming chat completion request with \(resolvedBody.messages.count) messages, max tokens: \(resolvedBody.maxCompletionTokens ?? 4096)")

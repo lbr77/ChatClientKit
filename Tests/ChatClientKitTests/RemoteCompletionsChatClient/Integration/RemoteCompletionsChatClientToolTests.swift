@@ -31,14 +31,14 @@ struct RemoteCompletionsChatToolTests {
                 ],
                 "required": ["location"],
             ],
-            strict: nil,
+            strict: nil
         )
 
         let request = ChatRequestBody(
             messages: [
                 .user(content: .text("What's the weather like in San Francisco?")),
             ],
-            tools: [getWeatherTool],
+            tools: [getWeatherTool]
         )
 
         let response: ChatResponse = try await client.chat(body: request)
@@ -68,14 +68,14 @@ struct RemoteCompletionsChatToolTests {
                 ],
                 "required": ["location"],
             ],
-            strict: nil,
+            strict: nil
         )
 
         let request = ChatRequestBody(
             messages: [
                 .user(content: .text("What's the weather in New York?")),
             ],
-            tools: [getWeatherTool],
+            tools: [getWeatherTool]
         )
 
         let stream = try await client.streamingChat(body: request)
@@ -115,14 +115,14 @@ struct RemoteCompletionsChatToolTests {
                 ],
                 "required": ["location"],
             ],
-            strict: nil,
+            strict: nil
         )
 
         let request = ChatRequestBody(
             messages: [
                 .user(content: .text("Get weather for London")),
             ],
-            tools: [getWeatherTool],
+            tools: [getWeatherTool]
         )
 
         let stream = try await client.streamingChat(body: request)

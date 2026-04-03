@@ -31,7 +31,7 @@ private extension ChatCompletionChunk.Choice.Delta.ToolCall {
             index: nil,
             id: id,
             type: "function",
-            function: .init(name: functionName, arguments: argumentsJSON),
+            function: .init(name: functionName, arguments: argumentsJSON)
         )
     }
 }
@@ -86,7 +86,7 @@ struct AppleIntelligencePromptBuilderTests {
         let result = AppleIntelligencePromptBuilder.makeInstructions(
             persona: "You are a helpful assistant.",
             messages: messages,
-            additionalDirectives: ["Please respond in Markdown."],
+            additionalDirectives: ["Please respond in Markdown."]
         )
 
         #expect(result.contains("You are a helpful assistant."))
@@ -121,7 +121,7 @@ struct AppleIntelligenceToolProxyTests {
         let proxy = AppleIntelligenceToolProxy(
             name: "lookupWeather",
             description: "Fetch latest weather info.",
-            schemaDescription: nil,
+            schemaDescription: nil
         )
 
         do {
@@ -147,7 +147,7 @@ struct AppleIntelligenceIntegrationTests {
                 .user(content: .text("Say 'Hello World' and nothing else.")),
             ],
             maxCompletionTokens: 20,
-            temperature: 0.5,
+            temperature: 0.5
         )
 
         let response: ChatResponse = try await client.chat(body: body)
@@ -168,7 +168,7 @@ struct AppleIntelligenceIntegrationTests {
                 .user(content: .text("Count from 1 to 5 with spaces between numbers.")),
             ],
             maxCompletionTokens: 50,
-            temperature: 0.3,
+            temperature: 0.3
         )
 
         let stream = try await client.streamingChat(body: body)
@@ -208,7 +208,7 @@ struct AppleIntelligenceIntegrationTests {
                     ]),
                     "required": .array([.string("location")]),
                 ],
-                strict: nil,
+                strict: nil
             ),
         ]
 
@@ -219,7 +219,7 @@ struct AppleIntelligenceIntegrationTests {
             ],
             maxCompletionTokens: 100,
             temperature: 0.5,
-            tools: tools,
+            tools: tools
         )
 
         let response: ChatResponse = try await client.chat(body: body)

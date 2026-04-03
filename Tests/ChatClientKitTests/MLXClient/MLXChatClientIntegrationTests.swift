@@ -26,8 +26,8 @@ struct MLXChatClientIntegrationTests {
                     .user(content: .text("Say HELLO")),
                 ],
                 maxCompletionTokens: 32,
-                temperature: 0.0,
-            ),
+                temperature: 0.0
+            )
         )
 
         let content = response

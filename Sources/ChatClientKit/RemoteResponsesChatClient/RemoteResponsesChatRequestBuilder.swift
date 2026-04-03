@@ -20,7 +20,7 @@ struct RemoteResponsesRequestBuilder {
         path: String?,
         apiKey: String?,
         additionalHeaders: [String: String],
-        encoder: JSONEncoder = JSONEncoder(),
+        encoder: JSONEncoder = JSONEncoder()
     ) {
         self.baseURL = baseURL
         self.path = path
@@ -31,7 +31,7 @@ struct RemoteResponsesRequestBuilder {
 
     func makeRequest(
         body: ResponsesRequestBody,
-        additionalField: [String: Any],
+        additionalField: [String: Any]
     ) throws -> URLRequest {
         guard let baseURL else {
             logger.error("invalid base URL for responses client")

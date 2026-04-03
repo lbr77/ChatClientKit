@@ -20,7 +20,7 @@ public enum MLXModelKind: Equatable, Sendable {
 public protocol MLXModelCoordinating: Sendable {
     func container(
         for configuration: ModelConfiguration,
-        kind: MLXModelKind,
+        kind: MLXModelKind
     ) async throws -> ModelContainer
 
     func reset() async
@@ -30,11 +30,11 @@ public protocol MLXModelCoordinating: Sendable {
 public protocol MLXModelLoading: Sendable {
     func loadLLM(
         configuration: ModelConfiguration,
-        tokenizerLoader: any TokenizerLoader,
+        tokenizerLoader: any TokenizerLoader
     ) async throws -> ModelContainer
     func loadVLM(
         configuration: ModelConfiguration,
-        tokenizerLoader: any TokenizerLoader,
+        tokenizerLoader: any TokenizerLoader
     ) async throws -> ModelContainer
 }
 
@@ -69,23 +69,23 @@ public struct DefaultMLXModelLoader: MLXModelLoading {
 
     public func loadLLM(
         configuration: ModelConfiguration,
-        tokenizerLoader: any TokenizerLoader,
+        tokenizerLoader: any TokenizerLoader
     ) async throws -> ModelContainer {
         let directory = try modelDirectory(from: configuration)
         return try await LLMModelFactory.shared.loadContainer(
             from: directory,
-            using: tokenizerLoader,
+            using: tokenizerLoader
         )
     }
 
     public func loadVLM(
         configuration: ModelConfiguration,
-        tokenizerLoader: any TokenizerLoader,
+        tokenizerLoader: any TokenizerLoader
     ) async throws -> ModelContainer {
         let directory = try modelDirectory(from: configuration)
         return try await VLMModelFactory.shared.loadContainer(
             from: directory,
-            using: tokenizerLoader,
+            using: tokenizerLoader
         )
     }
 
@@ -116,7 +116,7 @@ public actor MLXModelCoordinator: MLXModelCoordinating {
 
     public init(
         loader: MLXModelLoading = DefaultMLXModelLoader(),
-        tokenizerLoader: any TokenizerLoader = UnavailableMLXTokenizerLoader(),
+        tokenizerLoader: any TokenizerLoader = UnavailableMLXTokenizerLoader()
     ) {
         self.loader = loader
         self.tokenizerLoader = tokenizerLoader
@@ -124,7 +124,7 @@ public actor MLXModelCoordinator: MLXModelCoordinating {
 
     public func container(
         for configuration: ModelConfiguration,
-        kind: MLXModelKind,
+        kind: MLXModelKind
     ) async throws -> ModelContainer {
         let key = CacheKey(identifier: configuration.id, kind: kind)
 
@@ -147,12 +147,12 @@ public actor MLXModelCoordinator: MLXModelCoordinating {
             case .llm:
                 try await loader.loadLLM(
                     configuration: configuration,
-                    tokenizerLoader: tokenizerLoader,
+                    tokenizerLoader: tokenizerLoader
                 )
             case .vlm:
                 try await loader.loadVLM(
                     configuration: configuration,
-                    tokenizerLoader: tokenizerLoader,
+                    tokenizerLoader: tokenizerLoader
                 )
             }
         }

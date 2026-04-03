@@ -16,7 +16,7 @@ struct RemoteResponsesChatStreamProcessor {
     init(
         eventSourceFactory: EventSourceProducing = DefaultEventSourceFactory(),
         chunkDecoder: JSONDecoding = JSONDecoderWrapper(),
-        errorExtractor: RemoteResponsesChatErrorExtractor = RemoteResponsesChatErrorExtractor(),
+        errorExtractor: RemoteResponsesChatErrorExtractor = RemoteResponsesChatErrorExtractor()
     ) {
         self.eventSourceFactory = eventSourceFactory
         self.chunkDecoder = chunkDecoder
@@ -25,7 +25,7 @@ struct RemoteResponsesChatStreamProcessor {
 
     func stream(
         request: URLRequest,
-        collectError: @Sendable @escaping (Swift.Error) async -> Void,
+        collectError: @Sendable @escaping (Swift.Error) async -> Void
     ) -> AnyAsyncSequence<ChatResponseChunk> {
         let stream = AsyncStream<ChatResponseChunk> { continuation in
             Task.detached(priority: .userInitiated) { [collectError, eventSourceFactory, chunkDecoder, errorExtractor, request] in
@@ -82,7 +82,7 @@ struct RemoteResponsesChatStreamProcessor {
                                 outputMetadata: &outputMetadata,
                                 streamedTextItemIDs: &streamedTextItemIDs,
                                 ignoredToolEvents: &ignoredToolEvents,
-                                finishEmitted: &finishReasonEmitted,
+                                finishEmitted: &finishReasonEmitted
                             ) {
                                 chunkCount += 1
                                 for choice in chunk.choices {
@@ -133,7 +133,7 @@ extension RemoteResponsesChatStreamProcessor {
         outputMetadata: inout [String: OutputItemMetadata],
         streamedTextItemIDs: inout Set<String>,
         ignoredToolEvents: inout Set<String>,
-        finishEmitted: inout Bool,
+        finishEmitted: inout Bool
     ) -> ChatCompletionChunk? {
         switch payload.kind {
         case .outputTextDelta:
@@ -144,7 +144,7 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: delta,
+                content: delta
             )
         case .outputTextDone:
             let content = resolvedFinalText(from: payload, streamedTextItemIDs: &streamedTextItemIDs)
@@ -152,27 +152,27 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: content,
+                content: content
             )
         case .reasoningTextDelta:
             guard let delta = payload.delta else { return nil }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: delta,
+                reasoning: delta
             )
         case .reasoningTextDone:
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: payload.text ?? payload.delta,
+                reasoning: payload.text ?? payload.delta
             )
         case .refusalDelta:
             guard let delta = payload.delta else { return nil }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: delta,
+                content: delta
             )
         case .refusalDone:
             guard !finishEmitted else { return nil }
@@ -180,14 +180,14 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: payload.refusal ?? payload.text ?? payload.delta,
+                content: payload.refusal ?? payload.text ?? payload.delta
             )
         case .functionCallArgumentsDelta:
             toolCollector.appendDelta(
                 for: payload.itemID,
                 name: payload.name,
                 delta: payload.delta,
-                outputIndex: payload.outputIndex,
+                outputIndex: payload.outputIndex
             )
             return nil
         case .functionCallArgumentsDone:
@@ -195,7 +195,7 @@ extension RemoteResponsesChatStreamProcessor {
                 for: payload.itemID,
                 name: payload.name,
                 arguments: payload.arguments,
-                outputIndex: payload.outputIndex,
+                outputIndex: payload.outputIndex
             )
             return nil
         case .outputItemAdded:
@@ -204,7 +204,7 @@ extension RemoteResponsesChatStreamProcessor {
                 if let id = item.id ?? payload.itemID {
                     outputMetadata[id] = OutputItemMetadata(
                         role: item.role ?? "assistant",
-                        outputIndex: payload.outputIndex,
+                        outputIndex: payload.outputIndex
                     )
                 }
             }
@@ -215,14 +215,14 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: nil,
+                content: nil
             )
         case .reasoningSummaryTextDelta:
             guard let delta = payload.delta else { return nil }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: delta,
+                reasoning: delta
             )
         case .reasoningSummaryTextDone:
             guard !finishEmitted else { return nil }
@@ -230,7 +230,7 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: payload.text,
+                reasoning: payload.text
             )
         case .responseCompleted:
             guard !finishEmitted else { return nil }
@@ -238,7 +238,7 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: nil,
+                content: nil
             )
         case .responseFailed:
             finishEmitted = true
@@ -249,7 +249,7 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                content: nil,
+                content: nil
             )
         case .error:
             return nil
@@ -266,7 +266,7 @@ extension RemoteResponsesChatStreamProcessor {
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: payload.part?.text ?? payload.text,
+                reasoning: payload.part?.text ?? payload.text
             )
         }
     }
@@ -275,23 +275,23 @@ extension RemoteResponsesChatStreamProcessor {
         payload: ResponsesStreamEvent,
         outputMetadata: [String: OutputItemMetadata],
         content: String? = nil,
-        reasoning: String? = nil,
+        reasoning: String? = nil
     ) -> ChatCompletionChunk {
         let role = payload.itemID.flatMap { outputMetadata[$0]?.role } ?? "assistant"
         let choice = ChatCompletionChunk.Choice(
             delta: .init(
                 content: content,
                 reasoningContent: reasoning,
-                role: role,
+                role: role
             ),
-            index: payload.outputIndex,
+            index: payload.outputIndex
         )
         return ChatCompletionChunk(choices: [choice])
     }
 
     func resolvedFinalText(
         from payload: ResponsesStreamEvent,
-        streamedTextItemIDs: inout Set<String>,
+        streamedTextItemIDs: inout Set<String>
     ) -> String? {
         guard let text = payload.text, !text.isEmpty else { return nil }
         guard let itemID = payload.itemID else { return text }
@@ -375,13 +375,13 @@ struct ResponsesStreamEvent: Decodable {
             return NSError(
                 domain: "Server Error",
                 code: 0,
-                userInfo: [NSLocalizedDescriptionKey: error.message ?? "Unknown error"],
+                userInfo: [NSLocalizedDescriptionKey: error.message ?? "Unknown error"]
             )
         }
         return NSError(
             domain: "Server Error",
             code: 0,
-            userInfo: [NSLocalizedDescriptionKey: message ?? "Unknown error"],
+            userInfo: [NSLocalizedDescriptionKey: message ?? "Unknown error"]
         )
     }
 

@@ -47,7 +47,7 @@ public extension ChatCompletionChunk.Choice {
             reasoningContent: String? = nil,
             role: String? = nil,
             toolCalls: [ToolCall]? = nil,
-            images: [CompletionImage]? = nil,
+            images: [CompletionImage]? = nil
         ) {
             self.content = content
             self.reasoning = reasoning

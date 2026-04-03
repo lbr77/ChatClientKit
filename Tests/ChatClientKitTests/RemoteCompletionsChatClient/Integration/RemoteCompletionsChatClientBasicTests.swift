@@ -94,7 +94,7 @@ struct RemoteCompletionsChatClientBasicTests {
             messages: [
                 .user(content: .text("Say 'test'")),
             ],
-            temperature: 0.5,
+            temperature: 0.5
         )
 
         let response: ChatResponse = try await client.chat(body: request)
@@ -113,7 +113,7 @@ struct RemoteCompletionsChatClientBasicTests {
             messages: [
                 .user(content: .text("List the numbers 1 through 10.")),
             ],
-            maxCompletionTokens: 512, // reasoning content counts too
+            maxCompletionTokens: 512 // reasoning content counts too
         )
 
         let response: ChatResponse = try await client.chat(body: request)

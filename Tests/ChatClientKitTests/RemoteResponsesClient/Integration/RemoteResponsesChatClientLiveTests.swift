@@ -11,7 +11,7 @@ import Testing
 
 struct RemoteResponsesChatClientLiveTests {
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Responses API returns content`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()
@@ -32,7 +32,7 @@ struct RemoteResponsesChatClientLiveTests {
     }
 
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Streaming responses API yields chunks`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()
@@ -57,7 +57,7 @@ struct RemoteResponsesChatClientLiveTests {
     }
 
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Responses API respects developer instructions`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()
@@ -76,7 +76,7 @@ struct RemoteResponsesChatClientLiveTests {
     }
 
     @Test(
-        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured),
+        .enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured)
     )
     func `Responses API handles multi-turn conversations`() async throws {
         let client = TestHelpers.makeOpenRouterResponsesClient()

@@ -15,7 +15,7 @@ import Foundation
 extension MLXChatClient {
     func streamingChatCompletionRequestExecute(
         body: ChatRequestBody,
-        token: UUID,
+        token: UUID
     ) async throws -> AnyAsyncSequence<ChatResponseChunk> {
         var userInput = userInput(body: body)
         let generateParameters = generateParameters(body: body)
@@ -47,13 +47,13 @@ extension MLXChatClient {
                         let result = try MLXLMCommon.generate(
                             input: input,
                             parameters: generateParameters,
-                            context: context,
+                            context: context
                         ) { tokens in
                             let decodeResult = decoder.decode(
                                 tokens: tokens,
                                 latestOutputLength: &latestOutputLength,
                                 isReasoning: &isReasoning,
-                                shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace,
+                                shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace
                             )
 
                             if let generatedChunk = decodeResult.chunk {
@@ -96,7 +96,7 @@ extension MLXChatClient {
                             text: output,
                             previousLength: latestOutputLength,
                             isReasoning: isReasoning,
-                            shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace,
+                            shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace
                         ) {
                             for choice in finalChunk.choices {
                                 if let reasoning = choice.delta.reasoningContent {
@@ -119,7 +119,7 @@ extension MLXChatClient {
                                 let argsJSON = toolCallArgsToJSON(toolCall.function.arguments)
                                 let request = ToolRequest(
                                     name: toolCall.function.name,
-                                    args: argsJSON,
+                                    args: argsJSON
                                 )
                                 continuation.yield(ChatResponseChunk.tool(request))
                             }
@@ -161,7 +161,7 @@ struct ChunkDecoder {
         tokens: [Int],
         latestOutputLength: inout Int,
         isReasoning: inout Bool,
-        shouldRemoveLeadingWhitespace: inout Bool,
+        shouldRemoveLeadingWhitespace: inout Bool
     ) -> ChunkDecodeResult {
         var text = context.tokenizer.decode(tokenIds: tokens)
         let previousLength = latestOutputLength
@@ -180,7 +180,7 @@ struct ChunkDecoder {
             text: text,
             previousLength: previousLength,
             isReasoning: isReasoning,
-            shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace,
+            shouldRemoveLeadingWhitespace: &shouldRemoveLeadingWhitespace
         )
 
         var mutableText = text
@@ -219,7 +219,7 @@ struct ChunkDecoder {
         text: String,
         previousLength: Int,
         isReasoning: Bool,
-        shouldRemoveLeadingWhitespace: inout Bool,
+        shouldRemoveLeadingWhitespace: inout Bool
     ) -> ChatCompletionChunk? {
         guard previousLength < text.count else { return nil }
         let chunkRange = previousLength ..< text.count

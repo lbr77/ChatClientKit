@@ -21,7 +21,7 @@ struct AppleIntelligenceToolProxy: Tool {
     init(
         name: String,
         description: String?,
-        schemaDescription: String?,
+        schemaDescription: String?
     ) {
         let trimmedDescription = description?
             .trimmingCharacters(in: .whitespacesAndNewlines)

@@ -32,7 +32,7 @@ public class RemoteResponsesChatClient: ChatService, @unchecked Sendable {
         path: String? = nil,
         apiKey: String? = nil,
         additionalHeaders: [String: String] = [:],
-        additionalBodyField: [String: Any] = [:],
+        additionalBodyField: [String: Any] = [:]
     ) {
         self.init(
             model: model,
@@ -41,7 +41,7 @@ public class RemoteResponsesChatClient: ChatService, @unchecked Sendable {
             apiKey: apiKey,
             additionalHeaders: additionalHeaders,
             additionalBodyField: additionalBodyField,
-            dependencies: .live,
+            dependencies: .live
         )
     }
 
@@ -52,7 +52,7 @@ public class RemoteResponsesChatClient: ChatService, @unchecked Sendable {
         apiKey: String? = nil,
         additionalHeaders: [String: String] = [:],
         additionalBodyField: [String: Any] = [:],
-        dependencies: RemoteClientDependencies,
+        dependencies: RemoteClientDependencies
     ) {
         self.model = model
         self.baseURL = baseURL
@@ -70,7 +70,7 @@ public class RemoteResponsesChatClient: ChatService, @unchecked Sendable {
     }
 
     public func streamingChat(
-        body: ChatRequestBody,
+        body: ChatRequestBody
     ) async throws -> AnyAsyncSequence<ChatResponseChunk> {
         let requestBody = resolve(body: body, stream: true)
         let request = try makeURLRequest(body: requestBody)
@@ -80,7 +80,7 @@ public class RemoteResponsesChatClient: ChatService, @unchecked Sendable {
         let processor = RemoteResponsesChatStreamProcessor(
             eventSourceFactory: eventSourceFactory,
             chunkDecoder: chunkDecoderFactory(),
-            errorExtractor: errorExtractor,
+            errorExtractor: errorExtractor
         )
 
         return processor.stream(request: request) { [weak self] error in
@@ -95,7 +95,7 @@ extension RemoteResponsesChatClient {
             baseURL: baseURL,
             path: path,
             apiKey: apiKey,
-            additionalHeaders: additionalHeaders,
+            additionalHeaders: additionalHeaders
         )
     }
 

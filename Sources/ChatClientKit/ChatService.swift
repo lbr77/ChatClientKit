@@ -42,7 +42,7 @@ public extension ChatService {
     }
 
     func chatChunks(
-        @ChatRequestBuilder _ builder: @Sendable () -> [ChatRequest.BuildComponent],
+        @ChatRequestBuilder _ builder: @Sendable () -> [ChatRequest.BuildComponent]
     ) async throws -> [ChatResponseChunk] {
         try await chatChunks(ChatRequest(builder))
     }
@@ -50,7 +50,7 @@ public extension ChatService {
     // MARK: STREAMING CHAT RESPONSE CHUNKS
 
     func streamingChat(
-        @ChatRequestBuilder _ builder: @Sendable () -> [ChatRequest.BuildComponent],
+        @ChatRequestBuilder _ builder: @Sendable () -> [ChatRequest.BuildComponent]
     ) async throws -> AnyAsyncSequence<ChatResponseChunk> {
         try await streamingChat(ChatRequest(builder))
     }

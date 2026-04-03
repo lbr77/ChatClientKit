@@ -55,7 +55,7 @@ public struct RemoteClientDependencies: Sendable {
             chunkDecoderFactory: { JSONDecoderWrapper() },
             errorExtractor: RemoteCompletionsChatErrorExtractor(),
             reasoningParser: CompletionReasoningDecoder(),
-            requestSanitizer: RequestSanitizer(),
+            requestSanitizer: RequestSanitizer()
         )
     }
 }

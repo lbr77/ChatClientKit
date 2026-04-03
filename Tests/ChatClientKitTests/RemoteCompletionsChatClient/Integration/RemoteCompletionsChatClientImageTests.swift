@@ -106,7 +106,7 @@ struct RemoteCompletionsChatClientImageTests {
             ],
             maxCompletionTokens: nil,
             stream: false,
-            temperature: 0.4,
+            temperature: 0.4
         )
 
         let response: ChatResponse = try await client.chat(body: request)

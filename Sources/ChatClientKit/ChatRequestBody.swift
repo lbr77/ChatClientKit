@@ -23,7 +23,7 @@ public struct ChatRequestBody: Sendable, Encodable {
         maxCompletionTokens: Int? = nil,
         stream: Bool? = nil,
         temperature: Double? = nil,
-        tools: [Tool]? = nil,
+        tools: [Tool]? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -39,27 +39,27 @@ public extension ChatRequestBody {
         case assistant(
             content: MessageContent<String, [String]>? = nil,
             toolCalls: [ToolCall]? = nil,
-            reasoning: String? = nil,
+            reasoning: String? = nil
         )
 
         case developer(
             content: MessageContent<String, [String]>,
-            name: String? = nil,
+            name: String? = nil
         )
 
         case system(
             content: MessageContent<String, [String]>,
-            name: String? = nil,
+            name: String? = nil
         )
 
         case tool(
             content: MessageContent<String, [String]>,
-            toolCallID: String,
+            toolCallID: String
         )
 
         case user(
             content: MessageContent<String, [ContentPart]>,
-            name: String? = nil,
+            name: String? = nil
         )
 
         var role: String {
@@ -158,7 +158,7 @@ public extension ChatRequestBody.Message {
             case let .imageURL(url, detail):
                 try container.encode("image_url", forKey: .type)
                 var nestedContainer = container.nestedContainer(
-                    keyedBy: ImageKey.self, forKey: .imageURL,
+                    keyedBy: ImageKey.self, forKey: .imageURL
                 )
                 try nestedContainer.encode(url, forKey: .url)
                 if let detail {
@@ -168,7 +168,7 @@ public extension ChatRequestBody.Message {
                 try container.encode("input_audio", forKey: .type)
                 var nestedContainer = container.nestedContainer(
                     keyedBy: AudioKey.self,
-                    forKey: .audio,
+                    forKey: .audio
                 )
                 try nestedContainer.encode(data, forKey: .data)
                 try nestedContainer.encode(format, forKey: .format)
@@ -193,7 +193,7 @@ public extension ChatRequestBody.Message {
 
         public init(
             id: String,
-            function: ChatRequestBody.Message.ToolCall.Function,
+            function: ChatRequestBody.Message.ToolCall.Function
         ) {
             self.id = id
             self.function = function
@@ -209,7 +209,7 @@ public extension ChatRequestBody.Message.ToolCall {
 
         public init(
             name: String,
-            arguments: String? = nil,
+            arguments: String? = nil
         ) {
             self.name = name
             self.arguments = arguments
@@ -223,7 +223,7 @@ public extension ChatRequestBody {
             name: String,
             description: String?,
             parameters: [String: AnyCodingValue]?,
-            strict: Bool?,
+            strict: Bool?
         )
 
         enum RootKey: CodingKey {
@@ -245,12 +245,12 @@ public extension ChatRequestBody {
                 name: name,
                 description: description,
                 parameters: parameters,
-                strict: strict,
+                strict: strict
             ):
                 try container.encode("function", forKey: .type)
                 var functionContainer = container.nestedContainer(
                     keyedBy: FunctionKey.self,
-                    forKey: .function,
+                    forKey: .function
                 )
                 try functionContainer.encode(name, forKey: .name)
                 try functionContainer.encodeIfPresent(description, forKey: .description)
@@ -269,7 +269,7 @@ public extension ChatRequestBody {
             maxCompletionTokens: maxCompletionTokens,
             stream: stream,
             temperature: temperature,
-            tools: tools,
+            tools: tools
         )
         merged.model = model
         merged.stream = stream
