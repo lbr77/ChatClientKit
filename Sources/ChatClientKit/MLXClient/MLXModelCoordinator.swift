@@ -116,7 +116,7 @@ public actor MLXModelCoordinator: MLXModelCoordinating {
 
     public init(
         loader: MLXModelLoading = DefaultMLXModelLoader(),
-        tokenizerLoader: any TokenizerLoader = UnavailableMLXTokenizerLoader()
+        tokenizerLoader: any TokenizerLoader = DefaultMLXTokenizerLoader()
     ) {
         self.loader = loader
         self.tokenizerLoader = tokenizerLoader

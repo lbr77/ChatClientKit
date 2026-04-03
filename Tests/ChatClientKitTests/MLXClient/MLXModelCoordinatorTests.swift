@@ -16,9 +16,22 @@ import Testing
 @Suite(.serialized)
 struct MLXModelCoordinatorTests {
     @Test
+    func `Default tokenizer loader resolves tokenizer from local fixture`() async throws {
+        guard #available(iOS 17.0, macOS 14.0, macCatalyst 17.0, *) else { return }
+
+        let directory = try #require(TestFixtures.tokenizerOnlyModelDirectory())
+        let loader = DefaultMLXTokenizerLoader()
+
+        let tokenizer = try await loader.load(from: directory)
+
+        #expect(tokenizer.convertTokenToId("offline") == 4)
+        #expect(tokenizer.decode(tokenIds: [4, 5], skipSpecialTokens: false) == "offlinepath")
+    }
+
+    @Test
     func `Coordinator caches containers for identical configuration and kind`() async throws {
         guard #available(iOS 17.0, macOS 14.0, macCatalyst 17.0, *) else { return }
-        guard TestHelpers.checkGPU() else { return }
+        guard TestFixtures.mlxTestingModelDirectory() != nil else { return }
 
         let config = try modelConfiguration()
         let coordinator = MLXModelCoordinator(tokenizerLoader: StubTokenizerLoader())
@@ -32,7 +45,7 @@ struct MLXModelCoordinatorTests {
     @Test
     func `Coordinator reuses in-flight task for identical concurrent requests`() async throws {
         guard #available(iOS 17.0, macOS 14.0, macCatalyst 17.0, *) else { return }
-        guard TestHelpers.checkGPU() else { return }
+        guard TestFixtures.mlxTestingModelDirectory() != nil else { return }
 
         let config = try modelConfiguration()
         let coordinator = MLXModelCoordinator(tokenizerLoader: StubTokenizerLoader())
@@ -47,7 +60,7 @@ struct MLXModelCoordinatorTests {
     @Test
     func `Reset clears cached container`() async throws {
         guard #available(iOS 17.0, macOS 14.0, macCatalyst 17.0, *) else { return }
-        guard TestHelpers.checkGPU() else { return }
+        guard TestFixtures.mlxTestingModelDirectory() != nil else { return }
 
         let config = try modelConfiguration()
         let coordinator = MLXModelCoordinator(tokenizerLoader: StubTokenizerLoader())
@@ -62,7 +75,9 @@ struct MLXModelCoordinatorTests {
 
 @available(iOS 17.0, macOS 14.0, macCatalyst 17.0, *)
 func modelConfiguration() throws -> ModelConfiguration {
-    let url = TestHelpers.fixtureURLOrSkip(named: "mlx_testing_model")
+    guard let url = TestFixtures.mlxTestingModelDirectory() else {
+        fatalError("Fixture mlx_testing_model not found. Expected at ~/.testing/mlx_testing_model or <repo>/.test/mlx_testing_model.")
+    }
     return ModelConfiguration(directory: url)
 }
 
@@ -119,5 +134,47 @@ private struct StubTokenizer: Tokenizer {
         _ = tools
         _ = additionalContext
         return []
+    }
+}
+
+private enum TestFixtures {
+    static func tokenizerOnlyModelDirectory() -> URL? {
+        Bundle.module.url(
+            forResource: "TokenizerOnlyModel",
+            withExtension: nil,
+            subdirectory: "Fixtures"
+        )
+    }
+
+    static func mlxTestingModelDirectory(file: StaticString = #filePath) -> URL? {
+        #if os(macOS)
+            let homeFixture = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".testing")
+                .appendingPathComponent("mlx_testing_model", isDirectory: true)
+        #else
+            let homeFixture = FileManager.default
+                .urls(for: .documentDirectory, in: .userDomainMask)
+                .first!
+                .appendingPathComponent(".testing")
+                .appendingPathComponent("mlx_testing_model", isDirectory: true)
+        #endif
+
+        if FileManager.default.fileExists(atPath: homeFixture.path) {
+            return homeFixture
+        }
+
+        var url = URL(fileURLWithPath: "\(file)")
+        for _ in 0 ..< 5 {
+            url.deleteLastPathComponent()
+        }
+
+        let repoFixture = url
+            .appendingPathComponent(".test")
+            .appendingPathComponent("mlx_testing_model", isDirectory: true)
+
+        guard FileManager.default.fileExists(atPath: repoFixture.path) else {
+            return nil
+        }
+        return repoFixture
     }
 }

@@ -15,6 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ml-explore/mlx-swift-lm/", branch: "main"),
+        .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", from: "0.2.0"),
     ],
     targets: [
         .target(
@@ -24,12 +25,16 @@ let package = Package(
                 .product(name: "MLXLLM", package: "mlx-swift-lm"),
                 .product(name: "MLXVLM", package: "mlx-swift-lm"),
                 .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+                .product(name: "Tokenizers", package: "swift-tokenizers"),
             ]
         ),
         .target(name: "ServerEvent"),
         .testTarget(
             name: "ChatClientKitTests",
-            dependencies: ["ChatClientKit"]
+            dependencies: ["ChatClientKit"],
+            resources: [
+                .copy("Fixtures"),
+            ]
         ),
     ]
 )
