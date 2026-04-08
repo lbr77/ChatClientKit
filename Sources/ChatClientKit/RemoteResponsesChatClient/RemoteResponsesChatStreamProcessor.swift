@@ -156,16 +156,21 @@ extension RemoteResponsesChatStreamProcessor {
             )
         case .reasoningTextDelta:
             guard let delta = payload.delta else { return nil }
+            if let itemID = payload.itemID {
+                streamedTextItemIDs.insert(itemID)
+            }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
                 reasoning: delta
             )
         case .reasoningTextDone:
+            let content = resolvedFinalText(from: payload, streamedTextItemIDs: &streamedTextItemIDs)
+            guard content != nil else { return nil }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: payload.text ?? payload.delta
+                reasoning: content
             )
         case .refusalDelta:
             guard let delta = payload.delta else { return nil }
@@ -175,8 +180,6 @@ extension RemoteResponsesChatStreamProcessor {
                 content: delta
             )
         case .refusalDone:
-            guard !finishEmitted else { return nil }
-            finishEmitted = true
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
@@ -210,27 +213,30 @@ extension RemoteResponsesChatStreamProcessor {
             }
             return nil
         case .outputItemDone:
-            guard !finishEmitted else { return nil }
-            finishEmitted = true
-            return makeChunk(
-                payload: payload,
-                outputMetadata: outputMetadata,
-                content: nil
-            )
+            return nil
         case .reasoningSummaryTextDelta:
             guard let delta = payload.delta else { return nil }
+            if let itemID = payload.itemID {
+                let summaryKey = "\(itemID)_summary_\(payload.summaryIndex ?? 0)"
+                streamedTextItemIDs.insert(summaryKey)
+            }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
                 reasoning: delta
             )
         case .reasoningSummaryTextDone:
-            guard !finishEmitted else { return nil }
-            finishEmitted = true
+            if let itemID = payload.itemID {
+                let summaryKey = "\(itemID)_summary_\(payload.summaryIndex ?? 0)"
+                if streamedTextItemIDs.contains(summaryKey) {
+                    return nil
+                }
+            }
+            guard let text = payload.text, !text.isEmpty else { return nil }
             return makeChunk(
                 payload: payload,
                 outputMetadata: outputMetadata,
-                reasoning: payload.text
+                reasoning: text
             )
         case .responseCompleted:
             guard !finishEmitted else { return nil }
@@ -253,7 +259,10 @@ extension RemoteResponsesChatStreamProcessor {
             )
         case .error:
             return nil
-        case .contentPartAdded,
+        case .responseCreated,
+             .responseInProgress,
+             .responseQueued,
+             .contentPartAdded,
              .reasoningSummaryPartAdded,
              .outputTextAnnotationAdded,
              .unknown,
@@ -263,11 +272,7 @@ extension RemoteResponsesChatStreamProcessor {
             }
             return nil
         case .reasoningSummaryPartDone:
-            return makeChunk(
-                payload: payload,
-                outputMetadata: outputMetadata,
-                reasoning: payload.part?.text ?? payload.text
-            )
+            return nil
         }
     }
 
@@ -322,6 +327,9 @@ struct ResponsesStreamEvent: Decodable {
         case reasoningSummaryTextDelta = "response.reasoning_summary_text.delta"
         case reasoningSummaryTextDone = "response.reasoning_summary_text.done"
         case outputTextAnnotationAdded = "response.output_text.annotation.added"
+        case responseCreated = "response.created"
+        case responseInProgress = "response.in_progress"
+        case responseQueued = "response.queued"
         case responseCompleted = "response.completed"
         case responseFailed = "response.failed"
         case responseIncomplete = "response.incomplete"

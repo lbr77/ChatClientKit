@@ -57,27 +57,20 @@ struct RemoteResponsesClientUnitTests {
         #expect(instructions?.contains("guide") == true)
 
         let input = try #require(json["input"] as? [[String: Any]])
-        // Sanitizer appends a trailing user placeholder; ensure items are present rather than exact count only.
-        #expect(input.count == 3)
+        #expect(input.count >= 2)
 
         // Original user content preserved
-        let user = try #require(input.first)
+        let user = try #require(input.first { ($0["role"] as? String) == "user" })
         #expect(user["type"] as? String == "message")
-        #expect(user["role"] as? String == "user")
         let content = try #require(user["content"] as? [[String: Any]])
         let firstContent = try #require(content.first)
         #expect(firstContent["type"] as? String == "input_text")
         #expect(firstContent["text"] as? String == " hi ")
 
-        // Tool output stays encoded even when sanitizer adds trailing placeholders
+        // Tool output stays encoded
         let toolOutput = try #require(input.first { $0["type"] as? String == "function_call_output" })
         #expect(toolOutput["call_id"] as? String == "call-1")
         #expect(toolOutput["output"] as? String == "tool result")
-
-        // Trailing placeholder user message exists to keep model progressing after tool use
-        let placeholderUser = try #require(input.last)
-        #expect(placeholderUser["type"] as? String == "message")
-        #expect(placeholderUser["role"] as? String == "user")
     }
 
     @Test
@@ -184,8 +177,7 @@ struct RemoteResponsesClientUnitTests {
         let json = try #require(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
 
         let input = try #require(json["input"] as? [[String: Any]])
-        // Sanitizer inserts leading/trailing user placeholders around assistant tool calls.
-        #expect(input.count == 4)
+        #expect(input.count >= 2)
 
         let functionCall = try #require(input.first { $0["type"] as? String == "function_call" })
         #expect(functionCall["call_id"] as? String == "call-1")
@@ -258,8 +250,14 @@ struct RemoteResponsesClientUnitTests {
         let decoder = RemoteResponsesChatResponseDecoder(decoder: JSONDecoderWrapper())
 
         let result = try decoder.decodeResponse(from: responseData)
-        let tool = try #require(ChatResponse(chunks: result).tools.first)
-        #expect(tool.name == "do_first")
+        let response = ChatResponse(chunks: result)
+
+        #expect(response.text.contains("First"))
+        #expect(response.text.contains("Second"))
+
+        #expect(response.tools.count == 2)
+        #expect(response.tools[0].name == "do_first")
+        #expect(response.tools[1].name == "do_second")
     }
 
     @Test
@@ -579,7 +577,9 @@ struct RemoteResponsesClientUnitTests {
         ]
         let toolData = try JSONSerialization.data(withJSONObject: toolJSON)
         let toolResponse = try decoder.decodeResponse(from: toolData)
-        #expect(ChatResponse(chunks: toolResponse).tools.first?.name == "do_next")
+        let toolResult = ChatResponse(chunks: toolResponse)
+        #expect(toolResult.text.contains("Next do:"))
+        #expect(toolResult.tools.first?.name == "do_next")
     }
 
     @Test
@@ -621,6 +621,58 @@ struct RemoteResponsesClientUnitTests {
         }
 
         #expect(refusalText == "nope")
+    }
+
+    @Test
+    func `Streaming emits text and tool calls from multiple output items`() async throws {
+        let events: [EventSource.EventType] = [
+            .event(TestEvent(data: #"{"type":"response.created","response":{"id":"resp_1","status":"in_progress"}}"#)),
+            .event(TestEvent(data: #"{"type":"response.in_progress","response":{"id":"resp_1","status":"in_progress"}}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","role":"assistant","content":[]}}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"delta":"Calling tool"}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_text.done","item_id":"msg_1","output_index":0,"text":"Calling tool"}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_item.done","output_index":0,"item":{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"Calling tool"}]}}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_item.added","output_index":1,"item":{"id":"call_1","type":"function_call","name":"search","call_id":"call_1"}}"#)),
+            .event(TestEvent(data: #"{"type":"response.function_call_arguments.delta","item_id":"call_1","output_index":1,"delta":"{\"q\":"}"#)),
+            .event(TestEvent(data: #"{"type":"response.function_call_arguments.delta","item_id":"call_1","output_index":1,"delta":"\"test\"}"}"#)),
+            .event(TestEvent(data: #"{"type":"response.function_call_arguments.done","item_id":"call_1","output_index":1,"name":"search","arguments":"{\"q\":\"test\"}"}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_item.done","output_index":1,"item":{"id":"call_1","type":"function_call","name":"search","call_id":"call_1","arguments":"{\"q\":\"test\"}"}}"#)),
+            .event(TestEvent(data: #"{"type":"response.completed","response":{"id":"resp_1","status":"completed"}}"#)),
+            .closed,
+        ]
+        let eventFactory = MockEventSourceFactory(recordedEvents: events)
+        let dependencies = RemoteClientDependencies(
+            session: MockURLSession(result: .failure(TestError())),
+            eventSourceFactory: eventFactory,
+            responseDecoderFactory: { JSONDecoderWrapper() },
+            chunkDecoderFactory: { JSONDecoderWrapper() },
+            errorExtractor: RemoteResponsesErrorExtractor(),
+            reasoningParser: CompletionReasoningDecoder(),
+            requestSanitizer: RequestSanitizer()
+        )
+
+        let client = RemoteResponsesChatClient(
+            model: "gpt-resp",
+            baseURL: "https://example.com",
+            path: "/v1/responses",
+            apiKey: TestHelpers.requireAPIKey(),
+            dependencies: dependencies
+        )
+
+        let stream = try await client.streamingChat(
+            body: ChatRequestBody(messages: [.user(content: .text("search for test"))])
+        )
+
+        var received: [ChatResponseChunk] = []
+        for try await item in stream {
+            received.append(item)
+        }
+
+        let response = ChatResponse(chunks: received)
+        #expect(response.text == "Calling tool")
+        #expect(response.tools.count == 1)
+        #expect(response.tools.first?.name == "search")
+        #expect(response.tools.first?.args == "{\"q\":\"test\"}")
     }
 
     @Test

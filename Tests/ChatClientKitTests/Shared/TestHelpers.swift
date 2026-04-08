@@ -53,38 +53,18 @@ enum TestHelpers {
         return value
     }
 
-    /// Creates a RemoteCompletionsChatClient configured for OpenRouter with google/gemini-3-pro-preview
+    /// Creates a RemoteCompletionsChatClient configured for OpenRouter with moonshotai/kimi-k2.5
     /// Precondition: API key must be configured (check with isOpenRouterAPIKeyConfigured before using)
     static func makeOpenRouterClient() -> RemoteCompletionsChatClient {
         let apiKey = requireAPIKey()
         return RemoteCompletionsChatClient(
-            model: "google/gemini-3-pro-preview",
+            model: defaultOpenRouterModel,
             baseURL: "https://openrouter.ai/api",
             path: "/v1/chat/completions",
             apiKey: apiKey,
             additionalHeaders: [
-                "HTTP-Referer": "https://github.com/FlowDown/ChatClientKit",
-                "X-Title": "ChatClientKit Tests",
-            ]
-        )
-    }
-
-    /// Creates a RemoteCompletionsChatClient configured for OpenRouter image generation.
-    /// Uses `google/gemini-2.5-flash-image` which supports image output.
-    static func makeOpenRouterImageClient() -> RemoteCompletionsChatClient {
-        let apiKey = requireAPIKey()
-        return RemoteCompletionsChatClient(
-            model: "google/gemini-2.5-flash-image",
-            baseURL: "https://openrouter.ai/api",
-            path: "/v1/chat/completions",
-            apiKey: apiKey,
-            additionalHeaders: [
-                "HTTP-Referer": "https://github.com/FlowDown/ChatClientKit",
-                "X-Title": "ChatClientKit Tests",
-            ],
-            additionalBodyField: [
-                "output_modalities": ["image", "text"],
-                "modalities": ["image", "text"],
+                "HTTP-Referer": "https://flowdown.ai/",
+                "X-Title": "FlowDown",
             ]
         )
     }
@@ -99,13 +79,13 @@ enum TestHelpers {
             path: "/v1/responses",
             apiKey: apiKey,
             additionalHeaders: [
-                "HTTP-Referer": "https://github.com/FlowDown/ChatClientKit",
-                "X-Title": "ChatClientKit Tests",
+                "HTTP-Referer": "https://flowdown.ai/",
+                "X-Title": "FlowDown",
             ]
         )
     }
 
-    static let defaultOpenRouterModel: String = "google/gemini-3-pro-preview"
+    static let defaultOpenRouterModel: String = "moonshotai/kimi-k2.5"
 
     /// Resolves a fixture URL relative to the repository root.
     /// Precondition: Fixture must exist (check with appropriate condition before using)

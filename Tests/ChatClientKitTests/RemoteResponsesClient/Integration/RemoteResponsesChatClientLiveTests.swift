@@ -82,7 +82,7 @@ struct RemoteResponsesChatClientLiveTests {
         let client = TestHelpers.makeOpenRouterResponsesClient()
 
         let responseChunks = try await client.chatChunks {
-            ChatRequest.model("google/gemini-3-pro-preview")
+            ChatRequest.model(TestHelpers.defaultOpenRouterModel)
             ChatRequest.messages {
                 ChatRequest.Message.user(content: .text("My name is Alice."))
                 ChatRequest.Message.assistant(content: .text("Nice to meet you, Alice!"))

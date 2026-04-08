@@ -61,7 +61,7 @@ struct RemoteCompletionsChatClientImageTests {
         {
             "id": "gen-1765022540-E8rFudi6QOQq2QjD1dJ7",
             "provider": "Google AI Studio",
-            "model": "google/gemini-2.5-flash-image",
+            "model": "moonshotai/kimi-k2.5",
             "object": "chat.completion.chunk",
             "created": 1765022540,
             "choices": [
@@ -97,7 +97,7 @@ struct RemoteCompletionsChatClientImageTests {
 
     @Test(.enabled(if: TestHelpers.isOpenRouterAPIKeyConfigured))
     func `Image generation returns image payload`() async throws {
-        let client = TestHelpers.makeOpenRouterImageClient()
+        let client = TestHelpers.makeOpenRouterClient()
 
         let request = ChatRequestBody(
             messages: [
@@ -112,7 +112,7 @@ struct RemoteCompletionsChatClientImageTests {
         let response: ChatResponse = try await client.chat(body: request)
         let imageData = response.images.first?.data
 
-        #expect(imageData != nil, "Expected image payload from google/gemini-2.5-flash-image")
+        #expect(imageData != nil, "Expected image payload from moonshotai/kimi-k2.5")
         if imageData == nil {
             logger.error("imageGenerationProducesImage: missing image payload, model: \(client.model), baseURL: \(client.baseURL ?? "nil")")
         }
