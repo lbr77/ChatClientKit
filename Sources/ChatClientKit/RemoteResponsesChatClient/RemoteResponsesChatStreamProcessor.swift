@@ -213,6 +213,15 @@ extension RemoteResponsesChatStreamProcessor {
             }
             return nil
         case .outputItemDone:
+            if let item = payload.item {
+                toolCollector.observe(item: item)
+                if let id = item.id ?? payload.itemID {
+                    outputMetadata[id] = OutputItemMetadata(
+                        role: item.role ?? "assistant",
+                        outputIndex: payload.outputIndex
+                    )
+                }
+            }
             return nil
         case .reasoningSummaryTextDelta:
             guard let delta = payload.delta else { return nil }
@@ -355,7 +364,14 @@ struct ResponsesStreamEvent: Decodable {
     let refusal: String?
 
     var kind: Kind {
+        switch type {
+        case "response.tool_call_arguments.delta":
+            .functionCallArgumentsDelta
+        case "response.tool_call_arguments.done":
+            .functionCallArgumentsDone
+        default:
         Kind(rawValue: type) ?? .unknown
+        }
     }
 
     enum CodingKeys: String, CodingKey {

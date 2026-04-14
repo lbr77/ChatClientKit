@@ -180,13 +180,19 @@ struct RemoteResponsesClientUnitTests {
         #expect(input.count >= 2)
 
         let functionCall = try #require(input.first { $0["type"] as? String == "function_call" })
+        let functionCallID = try #require(functionCall["id"] as? String)
         #expect(functionCall["call_id"] as? String == "call-1")
         #expect(functionCall["name"] as? String == "do_calc")
         #expect(functionCall["arguments"] as? String == "{\"v\":1}")
+        #expect(functionCallID.hasPrefix("fc_"))
+        #expect(functionCallID != "call-1")
 
         let tool = try #require(input.first { $0["type"] as? String == "function_call_output" })
+        let toolOutputID = try #require(tool["id"] as? String)
         #expect(tool["call_id"] as? String == "call-1")
         #expect(tool["output"] as? String == "result text")
+        #expect(toolOutputID.hasPrefix("fco_"))
+        #expect(toolOutputID != "call-1")
     }
 
     @Test
@@ -284,6 +290,62 @@ struct RemoteResponsesClientUnitTests {
         let content = ChatResponse(chunks: result).text
         #expect(content.contains("[AUDIO]"))
         #expect(content.contains("diagram"))
+    }
+
+    @Test
+    func `Decoder ignores echoed user messages in provider output`() throws {
+        let responseJSON: [String: Any] = [
+            "id": "resp_echo",
+            "created_at": 1234,
+            "model": "gpt-resp",
+            "output": [
+                [
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        ["type": "input_text", "text": "What is 2+3?"],
+                    ],
+                ],
+                [
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        ["type": "output_text", "text": "2 + 3 is 5."],
+                    ],
+                ],
+            ],
+        ]
+        let responseData = try JSONSerialization.data(withJSONObject: responseJSON)
+        let decoder = RemoteResponsesChatResponseDecoder(decoder: JSONDecoderWrapper())
+
+        let result = try decoder.decodeResponse(from: responseData)
+        let response = ChatResponse(chunks: result)
+        #expect(response.text == "2 + 3 is 5.")
+    }
+
+    @Test
+    func `Decodes tool_call items with nested function payload`() throws {
+        let responseJSON: [String: Any] = [
+            "output": [
+                [
+                    "type": "tool_call",
+                    "id": "call_obj",
+                    "call_id": "tool_call_1",
+                    "function": [
+                        "name": "lookup_weather",
+                        "arguments": "{\"city\":\"Paris\"}",
+                    ],
+                ],
+            ],
+        ]
+        let responseData = try JSONSerialization.data(withJSONObject: responseJSON)
+        let decoder = RemoteResponsesChatResponseDecoder(decoder: JSONDecoderWrapper())
+
+        let result = try decoder.decodeResponse(from: responseData)
+        let tool = try #require(ChatResponse(chunks: result).tools.first)
+        #expect(tool.id == "tool_call_1")
+        #expect(tool.name == "lookup_weather")
+        #expect(tool.args == "{\"city\":\"Paris\"}")
     }
 
     @Test
@@ -671,6 +733,131 @@ struct RemoteResponsesClientUnitTests {
         let response = ChatResponse(chunks: received)
         #expect(response.text == "Calling tool")
         #expect(response.tools.count == 1)
+        #expect(response.tools.first?.name == "search")
+        #expect(response.tools.first?.args == "{\"q\":\"test\"}")
+    }
+
+    @Test
+    func `Streaming collects tool calls from tool_call output items`() async throws {
+        let events: [EventSource.EventType] = [
+            .event(TestEvent(data: #"{"type":"response.output_item.added","output_index":0,"item":{"id":"call_1","type":"tool_call","call_id":"tool_call_1","function":{"name":"search","arguments":"{\"q\":\"test\"}"}}}"#)),
+            .event(TestEvent(data: #"{"type":"response.tool_call_arguments.done","item_id":"tool_call_1","output_index":0,"name":"search","arguments":"{\"q\":\"test\"}"}"#)),
+            .closed,
+        ]
+        let eventFactory = MockEventSourceFactory(recordedEvents: events)
+        let dependencies = RemoteClientDependencies(
+            session: MockURLSession(result: .failure(TestError())),
+            eventSourceFactory: eventFactory,
+            responseDecoderFactory: { JSONDecoderWrapper() },
+            chunkDecoderFactory: { JSONDecoderWrapper() },
+            errorExtractor: RemoteResponsesErrorExtractor(),
+            reasoningParser: CompletionReasoningDecoder(),
+            requestSanitizer: RequestSanitizer()
+        )
+
+        let client = RemoteResponsesChatClient(
+            model: "gpt-resp",
+            baseURL: "https://example.com",
+            path: "/v1/responses",
+            apiKey: TestHelpers.requireAPIKey(),
+            dependencies: dependencies
+        )
+
+        let stream = try await client.streamingChat(
+            body: ChatRequestBody(messages: [.user(content: .text("search for test"))])
+        )
+
+        var received: [ChatResponseChunk] = []
+        for try await item in stream {
+            received.append(item)
+        }
+
+        let response = ChatResponse(chunks: received)
+        #expect(response.tools.count == 1)
+        #expect(response.tools.first?.id == "tool_call_1")
+        #expect(response.tools.first?.name == "search")
+        #expect(response.tools.first?.args == "{\"q\":\"test\"}")
+    }
+
+    @Test
+    func `Streaming merges item_id arguments with final call_id`() async throws {
+        let events: [EventSource.EventType] = [
+            .event(TestEvent(data: #"{"type":"response.function_call_arguments.done","item_id":"fc_1","output_index":0,"name":"search","arguments":"{\"q\":\"test\"}"}"#)),
+            .event(TestEvent(data: #"{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_1","type":"function_call","call_id":"call_1","name":"search"}}"#)),
+            .closed,
+        ]
+        let eventFactory = MockEventSourceFactory(recordedEvents: events)
+        let dependencies = RemoteClientDependencies(
+            session: MockURLSession(result: .failure(TestError())),
+            eventSourceFactory: eventFactory,
+            responseDecoderFactory: { JSONDecoderWrapper() },
+            chunkDecoderFactory: { JSONDecoderWrapper() },
+            errorExtractor: RemoteResponsesErrorExtractor(),
+            reasoningParser: CompletionReasoningDecoder(),
+            requestSanitizer: RequestSanitizer()
+        )
+
+        let client = RemoteResponsesChatClient(
+            model: "gpt-resp",
+            baseURL: "https://example.com",
+            path: "/v1/responses",
+            apiKey: TestHelpers.requireAPIKey(),
+            dependencies: dependencies
+        )
+
+        let stream = try await client.streamingChat(
+            body: ChatRequestBody(messages: [.user(content: .text("search for test"))])
+        )
+
+        var received: [ChatResponseChunk] = []
+        for try await item in stream {
+            received.append(item)
+        }
+
+        let response = ChatResponse(chunks: received)
+        #expect(response.tools.count == 1)
+        #expect(response.tools.first?.id == "call_1")
+        #expect(response.tools.first?.name == "search")
+        #expect(response.tools.first?.args == "{\"q\":\"test\"}")
+    }
+
+    @Test
+    func `Streaming collects tool call from output_item_done without argument events`() async throws {
+        let events: [EventSource.EventType] = [
+            .event(TestEvent(data: #"{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_1","type":"function_call","call_id":"call_1","name":"search","arguments":"{\"q\":\"test\"}"}}"#)),
+            .closed,
+        ]
+        let eventFactory = MockEventSourceFactory(recordedEvents: events)
+        let dependencies = RemoteClientDependencies(
+            session: MockURLSession(result: .failure(TestError())),
+            eventSourceFactory: eventFactory,
+            responseDecoderFactory: { JSONDecoderWrapper() },
+            chunkDecoderFactory: { JSONDecoderWrapper() },
+            errorExtractor: RemoteResponsesErrorExtractor(),
+            reasoningParser: CompletionReasoningDecoder(),
+            requestSanitizer: RequestSanitizer()
+        )
+
+        let client = RemoteResponsesChatClient(
+            model: "gpt-resp",
+            baseURL: "https://example.com",
+            path: "/v1/responses",
+            apiKey: TestHelpers.requireAPIKey(),
+            dependencies: dependencies
+        )
+
+        let stream = try await client.streamingChat(
+            body: ChatRequestBody(messages: [.user(content: .text("search for test"))])
+        )
+
+        var received: [ChatResponseChunk] = []
+        for try await item in stream {
+            received.append(item)
+        }
+
+        let response = ChatResponse(chunks: received)
+        #expect(response.tools.count == 1)
+        #expect(response.tools.first?.id == "call_1")
         #expect(response.tools.first?.name == "search")
         #expect(response.tools.first?.args == "{\"q\":\"test\"}")
     }

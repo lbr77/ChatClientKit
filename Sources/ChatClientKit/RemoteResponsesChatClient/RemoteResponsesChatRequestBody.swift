@@ -56,10 +56,11 @@ extension ResponsesRequestBody {
 extension ResponsesRequestBody {
     enum InputItem: Encodable {
         case message(role: String, content: [ContentPart])
-        case functionCall(callID: String, name: String, arguments: String?)
-        case functionCallOutput(callID: String, output: String)
+        case functionCall(id: String, callID: String, name: String, arguments: String?)
+        case functionCallOutput(id: String, callID: String, output: String)
 
         enum CodingKeys: String, CodingKey {
+            case id
             case type
             case role
             case content
@@ -76,13 +77,15 @@ extension ResponsesRequestBody {
                 try container.encode("message", forKey: .type)
                 try container.encode(role, forKey: .role)
                 try container.encode(content, forKey: .content)
-            case let .functionCall(callID, name, arguments):
+            case let .functionCall(id, callID, name, arguments):
                 try container.encode("function_call", forKey: .type)
+                try container.encode(id, forKey: .id)
                 try container.encode(callID, forKey: .callID)
                 try container.encode(name, forKey: .name)
                 try container.encodeIfPresent(arguments, forKey: .arguments)
-            case let .functionCallOutput(callID, output):
+            case let .functionCallOutput(id, callID, output):
                 try container.encode("function_call_output", forKey: .type)
+                try container.encode(id, forKey: .id)
                 try container.encode(callID, forKey: .callID)
                 try container.encode(output, forKey: .output)
             }
@@ -168,6 +171,7 @@ struct ResponsesRequestTransformer {
                 if let toolCalls {
                     for call in toolCalls {
                         inputItems.append(.functionCall(
+                            id: makeResponsesItemID(prefix: "fc", callID: call.id),
                             callID: call.id,
                             name: call.function.name,
                             arguments: call.function.arguments
@@ -176,7 +180,11 @@ struct ResponsesRequestTransformer {
                 }
             case let .tool(content, toolCallID):
                 if let text = flattenTextContent(content) {
-                    inputItems.append(.functionCallOutput(callID: toolCallID, output: text))
+                    inputItems.append(.functionCallOutput(
+                        id: makeResponsesItemID(prefix: "fco", callID: toolCallID),
+                        callID: toolCallID,
+                        output: text
+                    ))
                 }
             }
         }
@@ -199,6 +207,15 @@ struct ResponsesRequestTransformer {
 }
 
 extension ResponsesRequestTransformer {
+    func makeResponsesItemID(prefix: String, callID: String) -> String {
+        var hash: UInt64 = 1469598103934665603
+        for byte in callID.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1099511628211
+        }
+        return "\(prefix)_\(String(hash, radix: 16))"
+    }
+
     func flattenTextContent(
         _ content: ChatRequestBody.Message.MessageContent<String, [String]>
     ) -> String? {

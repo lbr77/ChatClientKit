@@ -16,15 +16,27 @@ class ResponsesToolCallCollector {
 
     var storage: [String: Pending] = [:]
     var order: [String] = []
+    var aliases: [String: String] = [:]
 
     func observe(item: ResponsesOutputItem) {
-        guard item.type == "function_call" else { return }
-        let identifier = item.callId ?? item.id ?? UUID().uuidString
+        guard item.isToolCall else { return }
+        let identifier = canonicalIdentifier(itemID: item.id, callID: item.callId)
+        if let itemID = item.id {
+            aliases[itemID] = identifier
+        }
+        if let callID = item.callId {
+            aliases[callID] = identifier
+        }
+
         var pending = storage[identifier] ?? Pending(id: identifier, name: "", arguments: "")
-        if let name = item.name {
+        if let itemID = item.id, itemID != identifier, let existing = storage.removeValue(forKey: itemID) {
+            pending = merge(existing, into: pending)
+            order.removeAll { $0 == itemID }
+        }
+        if let name = item.resolvedToolName {
             pending.name = name
         }
-        if let arguments = item.arguments {
+        if let arguments = item.resolvedToolArguments {
             pending.arguments = arguments
         }
         storage[identifier] = pending
@@ -40,16 +52,18 @@ class ResponsesToolCallCollector {
         outputIndex _: Int?
     ) {
         guard let itemID else { return }
-        var pending = storage[itemID] ?? Pending(id: itemID, name: name ?? "", arguments: "")
+        let identifier = canonicalIdentifier(itemID: itemID, callID: nil)
+        aliases[itemID] = identifier
+        var pending = storage[identifier] ?? Pending(id: identifier, name: name ?? "", arguments: "")
         if let name, pending.name.isEmpty {
             pending.name = name
         }
         if let delta {
             pending.arguments.append(delta)
         }
-        storage[itemID] = pending
-        if !order.contains(itemID) {
-            order.append(itemID)
+        storage[identifier] = pending
+        if !order.contains(identifier) {
+            order.append(identifier)
         }
     }
 
@@ -60,16 +74,18 @@ class ResponsesToolCallCollector {
         outputIndex _: Int?
     ) {
         guard let itemID else { return }
-        var pending = storage[itemID] ?? Pending(id: itemID, name: name ?? "", arguments: "")
+        let identifier = canonicalIdentifier(itemID: itemID, callID: nil)
+        aliases[itemID] = identifier
+        var pending = storage[identifier] ?? Pending(id: identifier, name: name ?? "", arguments: "")
         if let name {
             pending.name = name
         }
         if let arguments {
             pending.arguments = arguments
         }
-        storage[itemID] = pending
-        if !order.contains(itemID) {
-            order.append(itemID)
+        storage[identifier] = pending
+        if !order.contains(identifier) {
+            order.append(identifier)
         }
     }
 
@@ -82,5 +98,29 @@ class ResponsesToolCallCollector {
 
     var hasPendingRequests: Bool {
         !storage.isEmpty
+    }
+
+    func canonicalIdentifier(itemID: String?, callID: String?) -> String {
+        if let callID {
+            if let alias = aliases[callID] {
+                return alias
+            }
+            return callID
+        }
+        if let itemID, let alias = aliases[itemID] {
+            return alias
+        }
+        if let itemID {
+            return itemID
+        }
+        return UUID().uuidString
+    }
+
+    func merge(_ source: Pending, into destination: Pending) -> Pending {
+        Pending(
+            id: destination.id,
+            name: destination.name.isEmpty ? source.name : destination.name,
+            arguments: destination.arguments.isEmpty ? source.arguments : destination.arguments
+        )
     }
 }

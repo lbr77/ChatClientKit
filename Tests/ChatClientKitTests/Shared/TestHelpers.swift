@@ -87,6 +87,24 @@ enum TestHelpers {
 
     static let defaultOpenRouterModel: String = "moonshotai/kimi-k2.5"
 
+    static var isOpenRouterResponsesFixtureConfigured: Bool {
+        loadResponsesFixture(named: "Export-kimi-k2.5@openrouter.ai@moonshotai.fdmodel") != nil
+    }
+
+    static var isFireworksResponsesFixtureConfigured: Bool {
+        loadResponsesFixture(named: "Export-fireworks_routers_kimi-k2p5-turbo@api.fireworks.ai@accounts.fdmodel") != nil
+    }
+
+    static func makeOpenRouterFixtureResponsesClient() -> RemoteResponsesChatClient {
+        let fixture = requireResponsesFixture(named: "Export-kimi-k2.5@openrouter.ai@moonshotai.fdmodel")
+        return makeResponsesClient(from: fixture)
+    }
+
+    static func makeFireworksFixtureResponsesClient() -> RemoteResponsesChatClient {
+        let fixture = requireResponsesFixture(named: "Export-fireworks_routers_kimi-k2p5-turbo@api.fireworks.ai@accounts.fdmodel")
+        return makeResponsesClient(from: fixture)
+    }
+
     /// Resolves a fixture URL relative to the repository root.
     /// Precondition: Fixture must exist (check with appropriate condition before using)
     static func fixtureURLOrSkip(named name: String, file: StaticString = #filePath) -> URL {
@@ -208,7 +226,7 @@ enum TestHelpers {
         }
 
         var url = URL(fileURLWithPath: "\(file)")
-        for _ in 0 ..< 5 {
+        for _ in 0 ..< 6 {
             url.deleteLastPathComponent()
         }
         let repoFixture = url
@@ -232,4 +250,106 @@ enum TestHelpers {
         }
         return true
     }
+
+    private static func requireResponsesFixture(named name: String) -> ResponsesFixture {
+        guard let fixture = loadResponsesFixture(named: name) else {
+            fatalError("Fixture \(name) not found or invalid.")
+        }
+        return fixture
+    }
+
+    private static func loadResponsesFixture(named name: String) -> ResponsesFixture? {
+        let url = repositoryRoot().appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let endpoint = plist["endpoint"] as? String,
+              let model = plist["model_identifier"] as? String,
+              let apiKey = plist["token"] as? String
+        else {
+            return nil
+        }
+
+        let headers = plist["headers"] as? [String: String] ?? [:]
+        let bodyFieldsText = plist["bodyFields"] as? String ?? ""
+        let bodyFields = parseJSONObject(bodyFieldsText) ?? [:]
+        let components = resolveEndpointComponents(from: endpoint)
+
+        guard let baseURL = components.baseURL else {
+            return nil
+        }
+
+        return ResponsesFixture(
+            model: model,
+            baseURL: baseURL,
+            path: components.path ?? "/",
+            apiKey: apiKey,
+            additionalHeaders: headers,
+            additionalBodyField: bodyFields
+        )
+    }
+
+    private static func makeResponsesClient(from fixture: ResponsesFixture) -> RemoteResponsesChatClient {
+        RemoteResponsesChatClient(
+            model: fixture.model,
+            baseURL: fixture.baseURL,
+            path: fixture.path,
+            apiKey: fixture.apiKey,
+            additionalHeaders: fixture.additionalHeaders,
+            additionalBodyField: fixture.additionalBodyField
+        )
+    }
+
+    private static func parseJSONObject(_ text: String) -> [String: Any]? {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let data = text.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+        return object
+    }
+
+    private static func resolveEndpointComponents(from endpoint: String) -> (baseURL: String?, path: String?) {
+        guard !endpoint.isEmpty,
+              let components = URLComponents(string: endpoint),
+              components.host != nil
+        else {
+            return (endpoint.isEmpty ? nil : endpoint, endpoint.isEmpty ? nil : "/")
+        }
+
+        var baseComponents = URLComponents()
+        baseComponents.scheme = components.scheme
+        baseComponents.user = components.user
+        baseComponents.password = components.password
+        baseComponents.host = components.host
+        baseComponents.port = components.port
+        let baseURL = baseComponents.string
+
+        var pathComponents = URLComponents()
+        let pathValue = components.path.isEmpty ? "/" : components.path
+        pathComponents.path = pathValue
+        pathComponents.queryItems = components.queryItems
+        pathComponents.fragment = components.fragment
+        let normalizedPath = pathComponents.string ?? pathValue
+
+        return (baseURL, normalizedPath)
+    }
+
+    private static func repositoryRoot(file: StaticString = #filePath) -> URL {
+        var url = URL(fileURLWithPath: "\(file)")
+        for _ in 0 ..< 6 {
+            url.deleteLastPathComponent()
+        }
+        return url
+    }
+}
+
+private struct ResponsesFixture {
+    let model: String
+    let baseURL: String
+    let path: String
+    let apiKey: String
+    let additionalHeaders: [String: String]
+    let additionalBodyField: [String: Any]
 }

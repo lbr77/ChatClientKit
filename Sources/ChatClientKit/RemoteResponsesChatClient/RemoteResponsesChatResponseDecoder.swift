@@ -75,35 +75,70 @@ struct ResponsesOutputItem: Decodable {
     let id: String?
     let type: String?
     let role: String?
+    let status: String?
     let content: [ResponsesContentPart]?
     let name: String?
     let callId: String?
     let arguments: String?
+    let function: ResponsesFunctionPayload?
 
     enum CodingKeys: String, CodingKey {
         case id
         case type
         case role
+        case status
         case content
         case name
         case callId = "call_id"
         case arguments
+        case function
     }
 
     func asToolRequest() -> ToolRequest? {
-        guard type == "function_call" else { return nil }
+        guard isToolCall else { return nil }
         let identifier = callId ?? id ?? UUID().uuidString
-        let functionName = name ?? "tool"
-        let args = arguments ?? "{}"
+        let functionName = resolvedToolName ?? "tool"
+        let args = resolvedToolArguments ?? "{}"
         return ToolRequest(id: identifier, name: functionName, args: args)
     }
 
     var textContent: String? {
-        guard type == "message" else { return nil }
+        guard type == "message", isAssistantMessage else { return nil }
         let textSegments = content?.compactMap(\.resolvedContent) ?? []
         guard !textSegments.isEmpty else { return nil }
         return textSegments.joined()
     }
+
+    var isToolCall: Bool {
+        switch type {
+        case "function_call", "tool_call":
+            true
+        default:
+            false
+        }
+    }
+
+    var resolvedToolName: String? {
+        name ?? function?.name
+    }
+
+    var resolvedToolArguments: String? {
+        arguments ?? function?.arguments
+    }
+
+    private var isAssistantMessage: Bool {
+        switch role {
+        case nil, "assistant":
+            true
+        default:
+            false
+        }
+    }
+}
+
+struct ResponsesFunctionPayload: Decodable {
+    let name: String?
+    let arguments: String?
 }
 
 struct ResponsesContentPart: Decodable {
